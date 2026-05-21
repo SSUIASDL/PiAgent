@@ -68,7 +68,10 @@ function extractText(value: any): string {
 
 	if (Array.isArray(value)) return value.map(extractText).join("");
 
-	return (
+	const direct =
+		value.chunk ??
+		value.token ??
+		value.delta ??
 		value.output ??
 		value.text ??
 		value.content ??
@@ -77,10 +80,23 @@ function extractText(value: any): string {
 		value.answer ??
 		value.result ??
 		value.output_value ??
+		value.data?.chunk ??
+		value.data?.token ??
+		value.data?.delta ??
+		value.data?.text ??
+		value.data?.content ??
+		value.data?.message ??
+		value.data?.output ??
+		value.data?.result ??
+		value.data?.response ??
+		value.data?.outputs?.[0]?.outputs?.[0]?.results?.message?.text ??
 		value.outputs?.[0]?.outputs?.[0]?.results?.message?.text ??
-		value.outputs?.[0]?.outputs?.[0]?.artifacts?.message ??
-		""
-	).toString();
+		value.outputs?.[0]?.outputs?.[0]?.artifacts?.message;
+
+	if (direct != null && typeof direct !== "object") return direct.toString();
+	if (direct != null) return extractText(direct);
+
+	return "";
 }
 
 function usageFromResponse(value: any) {
