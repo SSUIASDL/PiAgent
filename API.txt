@@ -1,0 +1,8 @@
+curl --request Post\
+    --url 'https://agent.sec.samsung.net/api/v1/run/{endpoint}?stream=true'\
+    --header 'Content-Type: application/json'\
+    --header "x-api-key: <your api key>\
+    --data: '{
+        "input_type":"chat",
+        "output_type":"chat",
+        "input_value":"hello world!"}'
