@@ -241,18 +241,32 @@ export function streamSamsungAgent(model: Model<Api>, context: Context, options?
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
 				let buffer = "";
+				let receivedDone = false;
 
-				while (true) {
+				while (!receivedDone) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					buffer += decoder.decode(value, { stream: true });
 
 					const lines = buffer.split(/\r?\n/);
 					buffer = lines.pop() ?? "";
-					for (const line of lines) assistantText += parseChunkText(line);
+					for (const line of lines) {
+						const payload = line.trim().startsWith("data:") ? line.trim().slice(5).trim() : line.trim();
+						if (payload === "[DONE]") {
+							receivedDone = true;
+							break;
+						}
+						const delta = parseChunkText(line);
+						assistantText += delta;
+						pushDelta(stream, output, state, delta);
+					}
 				}
 
-				assistantText += parseChunkText(buffer);
+				if (!receivedDone) {
+					const delta = parseChunkText(buffer);
+					assistantText += delta;
+					pushDelta(stream, output, state, delta);
+				}
 			} else {
 				const raw = await response.text();
 				let parsed: any = raw;
@@ -273,7 +287,7 @@ export function streamSamsungAgent(model: Model<Api>, context: Context, options?
 				pushToolCalls(stream, output, toolCalls);
 				stream.push({ type: "done", reason: "toolUse", message: output });
 			} else {
-				pushDelta(stream, output, state, assistantText);
+				if (!state.started) pushDelta(stream, output, state, assistantText);
 				if (state.started) stream.push({ type: "text_end", contentIndex: output.content.length - 1, content: state.text, partial: output });
 				stream.push({ type: "done", reason: "stop", message: output });
 			}
